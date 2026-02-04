@@ -1,210 +1,195 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>馬到成功：午馬開運大輪盤</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Sans+TC:wght@400;700;900&family=Zhi+Mang+Xing&display=swap" rel="stylesheet">
-    
+    <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
-      /* 繼承 App.tsx 與 index.html 的視覺樣式 */
-      html, body {
-        overscroll-behavior: none;
-        height: 100%; width: 100%; background: #2a0505; margin: 0; overflow-x: hidden;
-      }
-      body {
-        font-family: 'Noto Sans TC', sans-serif;
-        background: radial-gradient(circle at center, #7f1d1d 0%, #2a0505 100%);
-      }
-      .font-calligraphy { font-family: 'Ma Shan Zheng', cursive; }
-      
-      /* 背景粒子特效 */
-      .particle {
-        position: fixed; pointer-events: none;
-        background: linear-gradient(135deg, #f59e0b, transparent);
-        border-radius: 50%; opacity: 0.3;
-        animation: float-up linear infinite; z-index: 1;
-      }
-      @keyframes float-up {
-        0% { transform: translateY(110vh) translateX(0) scale(1); opacity: 0; }
-        20% { opacity: 0.4; }
-        100% { transform: translateY(-10vh) translateX(50px) scale(0.5); opacity: 0; }
-      }
+        body { 
+            font-family: 'Noto Sans TC', sans-serif; 
+            background: radial-gradient(circle at center, #7f1d1d 0%, #2a0505 100%);
+            color: #fff; min-height: 100vh; margin: 0; overflow-x: hidden;
+        }
+        .font-calligraphy { font-family: 'Ma Shan Zheng', cursive; }
+        
+        /* 背景金粉粒子 */
+        #bg-particles { position: fixed; inset: 0; pointer-events: none; z-index: 1; }
+        .particle { position: absolute; background: linear-gradient(135deg, #f59e0b, transparent); border-radius: 50%; opacity: 0.3; animation: float-up linear infinite; }
+        @keyframes float-up { 
+            0% { transform: translateY(110vh) scale(1); opacity: 0; } 
+            100% { transform: translateY(-10vh) scale(0.5); opacity: 0; } 
+        }
 
-      /* 輪盤主體 */
-      .wheel-box {
-        position: relative; width: 340px; height: 340px; margin: 0 auto;
-        border: 12px solid #f59e0b; border-radius: 50%;
-        box-shadow: 0 0 50px rgba(0,0,0,0.8); background: #2a0505;
-      }
-      #wheel-canvas { width: 100%; height: 100%; border-radius: 50%; }
-      .pointer {
-        position: absolute; top: -30px; left: 50%; transform: translateX(-50%);
-        width: 45px; z-index: 30; filter: drop-shadow(0 5px 10px rgba(0,0,0,0.6));
-      }
-      .spin-btn {
-        position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-        width: 75px; height: 75px; background: #f59e0b; color: #7f1d1d;
-        border-radius: 50%; font-weight: 900; border: 4px solid #fff;
-        z-index: 40; display: flex; align-items: center; justify-content: center;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.4); cursor: pointer; font-size: 1.2rem;
-      }
-      .disabled { filter: grayscale(1); pointer-events: none; opacity: 0.7; }
+        /* 磨砂玻璃效果 */
+        .glass-panel { 
+            background: linear-gradient(to bottom, rgba(58, 10, 10, 0.9), #000); 
+            border: 1px solid rgba(202, 138, 4, 0.3); 
+            backdrop-filter: blur(10px);
+        }
 
-      /* 加載遮罩 */
-      #loading-overlay {
-        position: fixed; inset: 0; z-index: 9999;
-        background: radial-gradient(circle at center, #7f1d1d 0%, #2a0505 100%);
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
-      }
+        /* 初始加載遮罩 */
+        #loading-overlay { 
+            position: fixed; inset: 0; z-index: 999; background: #2a0505; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; 
+        }
+
+        /* 中獎彈窗樣式 */
+        #prize-modal { 
+            display: none; position: fixed; inset: 0; z-index: 1000; 
+            background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); 
+            align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s;
+        }
     </style>
-  </head>
-  <body>
+</head>
+<body>
     <div id="loading-overlay">
-      <div class="text-6xl mb-4 animate-bounce">🧧</div>
-      <div id="loading-text" class="text-xl font-bold font-calligraphy text-amber-400 text-center">正在確認開運資格...</div>
+        <div class="text-6xl mb-4 animate-bounce">🧧</div>
+        <p class="text-yellow-500 font-calligraphy text-2xl tracking-widest">啟動好運中...</p>
     </div>
 
     <div id="bg-particles"></div>
 
-    <div class="relative z-10 flex flex-col items-center justify-center min-h-screen p-4 pt-12">
-      <h1 class="text-5xl font-calligraphy text-yellow-500 mb-2 drop-shadow-2xl">馬到成功</h1>
-      <p class="text-yellow-600/60 text-sm tracking-[0.3em] mb-12 font-bold italic">LOTTO GOLD SPIN</p>
+    <main class="relative z-10 flex flex-col items-center px-6 py-12">
+        <header class="text-center mb-12">
+            <h1 class="text-6xl font-calligraphy text-yellow-500 mb-4 drop-shadow-2xl">馬到成功</h1>
+            <div class="flex items-center justify-center gap-4 text-yellow-600/60 font-bold tracking-[0.4em] text-[10px]">
+                <div class="h-px w-8 bg-current"></div>
+                <span>LUCKY WHEEL</span>
+                <div class="h-px w-8 bg-current"></div>
+            </div>
+        </header>
 
-      <div class="wheel-box">
-        <img src="https://cdn-icons-png.flaticon.com/512/8215/8215539.png" class="pointer" alt="pointer">
-        <canvas id="wheel-canvas"></canvas>
-        <div id="spin-btn" class="spin-btn" onclick="startSpin()">抽獎</div>
-      </div>
+        <div class="relative w-[320px] h-[320px] mb-16">
+            <div class="absolute inset-0 rounded-full border-[10px] border-yellow-600/20 bg-black/40 shadow-[0_0_50px_rgba(0,0,0,0.5)]"></div>
+            <img src="https://cdn-icons-png.flaticon.com/512/8215/8215539.png" class="absolute -top-7 left-1/2 -translate-x-1/2 w-14 z-20 drop-shadow-lg" alt="pointer">
+            <canvas id="wheel-canvas" class="rounded-full"></canvas>
+            <button id="spin-btn" onclick="startSpin()" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 bg-gradient-to-b from-yellow-400 via-yellow-600 to-yellow-800 rounded-full border-4 border-[#2a0505] shadow-2xl z-30 font-black text-[#2a0505] text-xl active:scale-90 transition-transform">
+                抽獎
+            </button>
+        </div>
 
-      <div id="status-msg" class="mt-16 p-6 rounded-[24px] bg-black/40 border border-yellow-600/30 backdrop-blur-md text-yellow-200 text-center w-full max-w-[320px]">
-        點擊中心按鈕，抽取您的午馬年樂透金
-      </div>
-      
-      <button onclick="liff.closeWindow()" class="mt-10 text-yellow-600/50 underline text-xs">離開遊戲</button>
+        <section class="w-full max-w-[360px] glass-panel rounded-[40px] p-10 shadow-2xl">
+            <h2 class="font-calligraphy text-3xl text-yellow-500 text-center mb-10 tracking-widest">活動說明</h2>
+            <div class="space-y-6" id="rules-container">
+                </div>
+        </section>
+
+        <button onclick="liff.closeWindow()" class="mt-12 text-white/20 underline text-[10px] tracking-widest">離開頁面</button>
+    </main>
+
+    <div id="prize-modal">
+        <div class="bg-gradient-to-b from-[#3a0a0a] to-black border-2 border-yellow-500 p-12 rounded-[40px] text-center max-w-[300px] transform scale-90 transition-transform duration-300">
+            <div class="text-6xl mb-6">🎊</div>
+            <h3 class="text-yellow-500 font-calligraphy text-3xl mb-4">恭喜中獎</h3>
+            <div id="win-name" class="text-4xl font-black text-white mb-8"></div>
+            <button onclick="closeModal()" class="w-full py-4 bg-yellow-500 text-black font-bold rounded-full shadow-lg">領取並關閉</button>
+        </div>
     </div>
 
     <script>
-      const LIFF_ID = '1569792743-2S9Zy8IT';
-      const GAS_URL = 'https://script.google.com/macros/s/AKfycbwsmCxklPsVoozRdPggUmh81IXatVZfWEG9dAD7iDkNwQHWJKoJe-idX4BLmF1_GLzZGg/exec';
-      let userUID = "";
-      let isSpinning = false;
+        const LIFF_ID = '1569792743-2S9Zy8IT';
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycbwsmCxklPsVoozRdPggUmh81IXatVZfWEG9dAD7iDkNwQHWJKoJe-idX4BLmF1_GLzZGg/exec';
+        
+        const rules = [
+            "每位會員限參加一次午馬開運大輪盤活動。",
+            "抽中之樂透金獎項將於 24 小時內自動發送至您的會員帳戶。",
+            "樂透金使用規範請參閱本平台之會員服務協議。",
+            "若偵測到重複領取或異常操作，系統將自動取消獎項資格。",
+            "主辦單位保有活動最終修改、變更及解釋之權利。"
+        ];
 
-      // 獎項配置 (5, 10, 15, 20)
-      const prizes = [
-        { name: "5 樂透金", color: "#7f1d1d" },
-        { name: "10 樂透金", color: "#2a0505" },
-        { name: "15 樂透金", color: "#991b1b" },
-        { name: "20 樂透金", color: "#450a0a" }
-      ];
+        const prizes = [
+            { name: "5 樂透金", color: "#7f1d1d" }, { name: "10 樂透金", color: "#2a0505" },
+            { name: "15 樂透金", color: "#991b1b" }, { name: "20 樂透金", color: "#450a0a" }
+        ];
 
-      // 初始化流程
-      async function init() {
-        drawWheel();
-        createParticles();
-        try {
-          await liff.init({ liffId: LIFF_ID });
-          if (!liff.isLoggedIn()) { liff.login(); return; }
-          const profile = await liff.getProfile();
-          userUID = profile.userId;
+        let userUID = "";
+        let isSpinning = false;
 
-          // 檢查 GAS 是否玩過
-          const res = await fetch(GAS_URL, {
-            method: 'POST',
-            body: JSON.stringify({ action: 'check', userId: userUID })
-          });
-          const data = await res.json();
-          if (data.canPlay) {
-            document.getElementById('loading-overlay').style.display = 'none';
-          } else {
-            document.getElementById('loading-text').innerHTML = "❌ 您已參加過本活動<br><small style='font-size:14px; opacity:0.7'>每位會員限參加一次</small>";
-          }
-        } catch (e) {
-          document.getElementById('loading-overlay').style.display = 'none';
+        async function init() {
+            // 渲染文案
+            document.getElementById('rules-container').innerHTML = rules.map((r, i) => `
+                <div class="flex gap-4">
+                    <span class="flex-shrink-0 w-6 h-6 rounded-full bg-yellow-600/20 border border-yellow-600/40 flex items-center justify-center text-yellow-500 text-[10px] font-black">${i+1}</span>
+                    <p class="text-white/70 text-xs leading-relaxed font-medium">${r}</p>
+                </div>
+            `).join('');
+
+            // 繪製輪盤
+            const canvas = document.getElementById('wheel-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = 800; canvas.height = 800;
+            const cx = 400, cy = 400, r = 380, step = (Math.PI * 2) / prizes.length;
+            prizes.forEach((p, i) => {
+                const angle = i * step;
+                ctx.beginPath(); ctx.fillStyle = p.color; ctx.moveTo(cx, cy); ctx.arc(cx, cy, r, angle, angle + step); ctx.fill();
+                ctx.save(); ctx.translate(cx, cy); ctx.rotate(angle + step / 2); ctx.fillStyle = "#fbbf24"; ctx.font = "bold 52px Noto Sans TC"; ctx.textAlign = "right";
+                ctx.fillText(p.name, r - 60, 20); ctx.restore();
+            });
+
+            // 生成粒子
+            const partContainer = document.getElementById('bg-particles');
+            for(let i=0; i<25; i++) {
+                const p = document.createElement('div');
+                p.className = 'particle';
+                p.style.width = p.style.height = (Math.random()*4+2)+'px';
+                p.style.left = Math.random()*100+'vw';
+                p.style.animationDuration = (Math.random()*8+4)+'s';
+                p.style.animationDelay = (Math.random()*5)+'s';
+                partContainer.appendChild(p);
+            }
+
+            // LIFF 初始化與資格檢查
+            try {
+                await liff.init({ liffId: LIFF_ID });
+                if (!liff.isLoggedIn()) { liff.login(); return; }
+                const profile = await liff.getProfile();
+                userUID = profile.userId;
+
+                const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'check', userId: userUID }) });
+                const data = await res.json();
+                
+                if (data.canPlay) {
+                    document.getElementById('loading-overlay').style.display = 'none';
+                } else {
+                    document.getElementById('loading-text').innerHTML = "❌ 您今日已領取過好運囉！";
+                }
+            } catch (e) {
+                // 若開發環境無法跑 LIFF，5秒後自動隱藏遮罩方便測試視覺
+                setTimeout(() => document.getElementById('loading-overlay').style.display = 'none', 5000);
+            }
         }
-      }
 
-      // 繪製輪盤
-      function drawWheel() {
-        const canvas = document.getElementById('wheel-canvas');
-        const ctx = canvas.getContext('2d');
-        canvas.width = 800; canvas.height = 800;
-        const cx = 400, cy = 400, r = 380;
-        const step = (Math.PI * 2) / prizes.length;
+        function startSpin() {
+            if (isSpinning) return;
+            isSpinning = true;
+            document.getElementById('spin-btn').classList.add('opacity-50', 'pointer-events-none');
+            const winIdx = Math.floor(Math.random() * prizes.length);
+            const deg = 3600 + (360 - (winIdx * 90) - 45); // 隨機旋轉 10 圈以上並停在正確區域
 
-        prizes.forEach((p, i) => {
-          const angle = i * step;
-          ctx.beginPath();
-          ctx.fillStyle = p.color;
-          ctx.moveTo(cx, cy);
-          ctx.arc(cx, cy, r, angle, angle + step);
-          ctx.fill();
-          ctx.strokeStyle = "#f59e0b";
-          ctx.lineWidth = 4;
-          ctx.stroke();
-
-          ctx.save();
-          ctx.translate(cx, cy);
-          ctx.rotate(angle + step / 2);
-          ctx.fillStyle = "#fbbf24";
-          ctx.font = "bold 52px Noto Sans TC";
-          ctx.textAlign = "right";
-          ctx.fillText(p.name, r - 60, 20);
-          ctx.restore();
-        });
-      }
-
-      // 旋轉邏輯
-      function startSpin() {
-        if (isSpinning) return;
-        isSpinning = true;
-        document.getElementById('spin-btn').classList.add('disabled');
-        document.getElementById('status-msg').innerText = "🔮 好運計算中...";
-
-        const winIndex = Math.floor(Math.random() * prizes.length);
-        const totalRotation = 3600 + (360 - (winIndex * (360 / prizes.length)) - (180 / prizes.length));
-
-        gsap.to("#wheel-canvas", {
-          rotation: totalRotation,
-          duration: 5,
-          ease: "back.out(0.4)",
-          onComplete: () => {
-            saveResult(prizes[winIndex].name);
-          }
-        });
-      }
-
-      // 存檔與顯示
-      async function saveResult(prizeName) {
-        document.getElementById('status-msg').innerHTML = `🎊 恭喜獲得：<span class="text-yellow-400 font-bold text-2xl">${prizeName}</span>`;
-        try {
-          await fetch(GAS_URL, {
-            method: 'POST',
-            body: JSON.stringify({ action: 'save', userId: userUID, prize: prizeName })
-          });
-        } catch (e) {
-          console.error("存檔失敗", e);
+            gsap.to("#wheel-canvas", { 
+                rotation: deg, duration: 5, ease: "back.out(0.5)", 
+                onComplete: () => {
+                    const prize = prizes[winIdx].name;
+                    document.getElementById('win-name').innerText = prize;
+                    const modal = document.getElementById('prize-modal');
+                    modal.style.display = 'flex';
+                    setTimeout(() => { modal.style.opacity = '1'; modal.querySelector('div').style.transform = 'scale(1)'; }, 10);
+                    // 紀錄到 GAS
+                    fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'save', userId: userUID, prize: prize }) });
+                }
+            });
         }
-      }
 
-      function createParticles() {
-        const container = document.getElementById('bg-particles');
-        for (let i = 0; i < 20; i++) {
-          const p = document.createElement('div');
-          p.className = 'particle';
-          const size = Math.random() * 5 + 2 + 'px';
-          p.style.width = p.style.height = size;
-          p.style.left = Math.random() * 100 + 'vw';
-          p.style.animationDuration = Math.random() * 10 + 5 + 's';
-          p.style.animationDelay = Math.random() * 5 + 's';
-          container.appendChild(p);
+        function closeModal() {
+            liff.closeWindow();
         }
-      }
 
-      window.onload = init;
+        window.onload = init;
     </script>
-  </body>
+</body>
 </html>
