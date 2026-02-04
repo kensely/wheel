@@ -1,157 +1,214 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>馬到成功：幸運大轉盤</title>
-    <script src="https://unpkg.com/vconsole@latest/dist/vconsole.min.js"></script>
-    <script>var vConsole = new window.VConsole();</script>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>馬到成功：樂透金大轉盤</title>
+    
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Sans+TC:wght@400;700;900&family=Zhi+Mang+Xing&display=swap" rel="stylesheet">
     
     <style>
-        body { font-family: 'Noto Sans TC', sans-serif; background: radial-gradient(circle at center, #7f1d1d 0%, #2a0505 100%); margin: 0; overflow: hidden; height: 100vh; color: white; }
-        .font-calligraphy { font-family: 'Ma Shan Zheng', cursive; }
-        #loading-overlay { position: fixed; inset: 0; background: #2a0505; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .wheel-container { position: relative; width: 340px; height: 340px; margin: 20px auto; }
-        .wheel-border { position: absolute; inset: -15px; border: 12px solid #f59e0b; border-radius: 50%; box-shadow: 0 0 40px rgba(245, 158, 11, 0.6); z-index: 5; pointer-events: none; }
-        #wheel-canvas { width: 100%; height: 100%; border-radius: 50%; }
-        .pointer { position: absolute; top: -30px; left: 50%; transform: translateX(-50%); width: 45px; z-index: 10; filter: drop-shadow(0 5px 8px rgba(0,0,0,0.6)); }
-        .spin-btn { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 70px; height: 70px; background: #f59e0b; color: #7f1d1d; border-radius: 50%; font-weight: 900; border: 4px solid #fff; z-index: 20; display: flex; align-items: center; justify-content: center; box-shadow: 0 5px 15px rgba(0,0,0,0.4); cursor: pointer; font-size: 1.2rem; }
-        .spin-btn:active { transform: translate(-50%, -45%); box-shadow: 0 2px 10px rgba(0,0,0,0.4); }
-        .disabled { filter: grayscale(1); pointer-events: none; opacity: 0.7; }
+      html, body {
+        overscroll-behavior: none;
+        height: 100%; width: 100%;
+        background: #2a0505;
+        margin: 0; overflow: hidden;
+      }
+      body {
+        font-family: 'Noto Sans TC', sans-serif;
+        background: radial-gradient(circle at center, #7f1d1d 0%, #2a0505 100%);
+      }
+      .font-calligraphy { font-family: 'Ma Shan Zheng', cursive; }
+      
+      .particle {
+        position: fixed; pointer-events: none;
+        background: linear-gradient(135deg, #f59e0b, transparent);
+        border-radius: 50%; opacity: 0.3;
+        animation: float-up linear infinite;
+        z-index: 1;
+      }
+      @keyframes float-up {
+        0% { transform: translateY(110vh) translateX(0) scale(1); opacity: 0; }
+        20% { opacity: 0.4; }
+        100% { transform: translateY(-10vh) translateX(50px) scale(0.5); opacity: 0; }
+      }
+
+      .game-container {
+        position: relative; z-index: 10;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        min-height: 100vh; padding: 20px;
+      }
+      .wheel-outer {
+        position: relative;
+        width: 320px; height: 320px;
+        border: 8px solid #f59e0b;
+        border-radius: 50%;
+        box-shadow: 0 0 50px rgba(0,0,0,0.8), inset 0 0 20px rgba(245,158,11,0.5);
+        background: #f59e0b;
+        margin: 20px auto;
+      }
+      #wheel-canvas { width: 100%; height: 100%; border-radius: 50%; }
+      
+      .pointer {
+        position: absolute; top: -25px; left: 50%;
+        transform: translateX(-50%); width: 40px;
+        z-index: 30; filter: drop-shadow(0 5px 10px rgba(0,0,0,0.8));
+      }
+
+      .spin-btn {
+        position: absolute; top: 50%; left: 50%;
+        transform: translate(-50%, -50%);
+        width: 70px; height: 70px;
+        background: radial-gradient(#fff, #f59e0b);
+        color: #7f1d1d; border-radius: 50%;
+        font-weight: 900; border: 4px solid #7f1d1d;
+        z-index: 40; display: flex; align-items: center; justify-content: center;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.5); cursor: pointer;
+      }
+      .spin-btn:active { transform: translate(-50%, -46%); box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
+      
+      #loading-overlay {
+        position: fixed; inset: 0; z-index: 9999;
+        background: radial-gradient(circle at center, #7f1d1d 0%, #2a0505 100%);
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div id="loading-overlay">
-        <div class="text-6xl mb-4 animate-bounce">🏮</div>
-        <div id="loading-text" class="text-xl font-bold font-calligraphy text-amber-400">正在領取開運資格...</div>
+      <div class="text-6xl mb-4 animate-bounce">🧧</div>
+      <div id="loading-text" class="text-xl font-bold font-calligraphy text-amber-400">正在確認開運資格...</div>
     </div>
 
-    <div class="flex flex-col items-center justify-center min-h-screen p-4">
-        <h1 class="text-5xl font-calligraphy text-amber-400 mb-2 drop-shadow-xl">馬到成功</h1>
-        <p class="text-amber-200/50 text-sm tracking-widest mb-10 italic">── 幸運大轉盤 ──</p>
+    <div id="bg-particles"></div>
 
-        <div class="wheel-container">
-            <img src="https://cdn-icons-png.flaticon.com/512/8215/8215539.png" class="pointer" alt="pointer">
-            <div class="wheel-border"></div>
-            <canvas id="wheel-canvas"></canvas>
-            <div id="spin-btn" class="spin-btn" onclick="startSpin()">抽獎</div>
-        </div>
+    <div class="game-container">
+      <h1 class="text-5xl font-calligraphy text-yellow-500 mb-2 drop-shadow-2xl">馬到成功</h1>
+      <p class="text-yellow-600/60 text-sm tracking-[0.3em] mb-10 font-bold italic">LOTTO GOLD SPIN</p>
 
-        <div id="status-msg" class="text-amber-100 text-lg mt-12 h-8 font-bold tracking-widest drop-shadow-md">
-            點擊「抽獎」啟動好運
-        </div>
-        
-        <button onclick="liff.closeWindow()" class="mt-8 text-amber-500/60 underline text-sm">離開遊戲</button>
+      <div class="wheel-outer">
+        <img src="https://cdn-icons-png.flaticon.com/512/8215/8215539.png" class="pointer" alt="pointer">
+        <canvas id="wheel-canvas"></canvas>
+        <div id="spin-btn" class="spin-btn" onclick="startSpin()">抽獎</div>
+      </div>
+
+      <div id="status-msg" class="mt-12 p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md text-yellow-200/80 text-sm tracking-widest text-center">
+        轉動大轉盤，贏取樂透金獎勵
+      </div>
     </div>
 
     <script>
-        const LIFF_ID = '1569792743-2S9Zy8IT'; // 建議更換為新 LIFF ID
-        const GAS_URL = 'https://script.google.com/macros/s/AKfycbwsmCxklPsVoozRdPggUmh81IXatVZfWEG9dAD7iDkNwQHWJKoJe-idX4BLmF1_GLzZGg/exec';
-        let userUID = "";
-        let isSpinning = false;
+      const LIFF_ID = '1569792743-2S9Zy8IT';
+      const GAS_URL = 'https://script.google.com/macros/s/AKfycbwsmCxklPsVoozRdPggUmh81IXatVZfWEG9dAD7iDkNwQHWJKoJe-idX4BLmF1_GLzZGg/exec';
+      let userUID = "";
+      let isSpinning = false;
 
-        const prizes = [
-            { name: "50元折價券", color: "#991b1b" },
-            { name: "銘謝惠顧", color: "#2a0505" },
-            { name: "100元折價券", color: "#7f1d1d" },
-            { name: "開運糖果", color: "#2a0505" },
-            { name: "再來一次", color: "#b45309" },
-            { name: "神祕驚喜", color: "#2a0505" }
-        ];
+      // 更新後的獎項名單
+      const prizes = [
+        { name: "5 樂透金", color: "#7f1d1d" },
+        { name: "10 樂透金", color: "#3d0a0a" },
+        { name: "15 樂透金", color: "#991b1b" },
+        { name: "20 樂透金", color: "#450a0a" }
+      ];
 
-        async function init() {
-            renderWheel();
-            try {
-                await liff.init({ liffId: LIFF_ID });
-                if (!liff.isLoggedIn()) { liff.login(); return; }
-                const profile = await liff.getProfile();
-                userUID = profile.userId;
+      async function init() {
+        drawWheel();
+        createParticles();
+        try {
+          await liff.init({ liffId: LIFF_ID });
+          if (!liff.isLoggedIn()) { liff.login(); return; }
+          const profile = await liff.getProfile();
+          userUID = profile.userId;
 
-                const res = await fetch(GAS_URL, {
-                    method: 'POST',
-                    body: JSON.stringify({ action: 'check', userId: userUID })
-                });
-                const data = await res.json();
-                if (data.canPlay) {
-                    document.getElementById('loading-overlay').style.display = 'none';
-                } else {
-                    document.getElementById('loading-text').innerHTML = "❌ 您已參加過本活動<br><small>每位會員限參加一次</small>";
-                }
-            } catch (e) {
-                document.getElementById('loading-overlay').style.display = 'none';
-            }
+          const res = await fetch(GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'check', userId: userUID })
+          });
+          const data = await res.json();
+          if (data.canPlay) {
+            document.getElementById('loading-overlay').style.display = 'none';
+          } else {
+            document.getElementById('loading-text').innerHTML = "❌ 您已參加過本活動<br><small>每位會員限參加一次</small>";
+          }
+        } catch (e) {
+          document.getElementById('loading-overlay').style.display = 'none';
         }
+      }
 
-        function renderWheel() {
-            const canvas = document.getElementById('wheel-canvas');
-            const ctx = canvas.getContext('2d');
-            canvas.width = 800; canvas.height = 800;
-            const cx = 400, cy = 400, r = 380;
-            const step = (Math.PI * 2) / prizes.length;
+      function drawWheel() {
+        const canvas = document.getElementById('wheel-canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = 800; canvas.height = 800;
+        const cx = 400, cy = 400, r = 380;
+        const step = (Math.PI * 2) / prizes.length;
 
-            prizes.forEach((p, i) => {
-                const angle = i * step;
-                ctx.beginPath();
-                ctx.fillStyle = p.color;
-                ctx.moveTo(cx, cy);
-                ctx.arc(cx, cy, r, angle, angle + step);
-                ctx.fill();
-                ctx.strokeStyle = "#f59e0b";
-                ctx.lineWidth = 2;
-                ctx.stroke();
+        prizes.forEach((p, i) => {
+          const angle = i * step;
+          ctx.beginPath();
+          ctx.fillStyle = p.color;
+          ctx.moveTo(cx, cy);
+          ctx.arc(cx, cy, r, angle, angle + step);
+          ctx.fill();
+          ctx.strokeStyle = "rgba(245,158,11,0.5)";
+          ctx.lineWidth = 4;
+          ctx.stroke();
 
-                ctx.save();
-                ctx.translate(cx, cy);
-                ctx.rotate(angle + step / 2);
-                ctx.fillStyle = "#fbbf24";
-                ctx.font = "900 38px Noto Sans TC";
-                ctx.fillText(p.name, r / 2.5, 15);
-                ctx.restore();
-            });
+          ctx.save();
+          ctx.translate(cx, cy);
+          ctx.rotate(angle + step / 2);
+          ctx.fillStyle = "#fbbf24";
+          ctx.font = "bold 50px Noto Sans TC";
+          ctx.textAlign = "right";
+          ctx.fillText(p.name, r - 60, 18);
+          ctx.restore();
+        });
+      }
+
+      function startSpin() {
+        if (isSpinning) return;
+        isSpinning = true;
+        document.getElementById('spin-btn').style.opacity = "0.5";
+        document.getElementById('status-msg').innerText = "🔮 樂透金好運計算中...";
+
+        const winIndex = Math.floor(Math.random() * prizes.length);
+        const totalRotation = 3600 + (360 - (winIndex * (360 / prizes.length)) - (180 / prizes.length));
+
+        gsap.to("#wheel-canvas", {
+          rotation: totalRotation,
+          duration: 5,
+          ease: "back.out(0.4)",
+          onComplete: () => {
+            handleResult(prizes[winIndex].name);
+          }
+        });
+      }
+
+      async function handleResult(prize) {
+        document.getElementById('status-msg').innerHTML = `🎊 恭喜獲得：<span class="text-yellow-400 font-bold text-2xl">${prize}</span>`;
+        await fetch(GAS_URL, {
+          method: 'POST',
+          body: JSON.stringify({ action: 'save', userId: userUID, prize: prize })
+        });
+      }
+
+      function createParticles() {
+        const container = document.getElementById('bg-particles');
+        for (let i = 0; i < 20; i++) {
+          const p = document.createElement('div');
+          p.className = 'particle';
+          const size = Math.random() * 5 + 2 + 'px';
+          p.style.width = size; p.style.height = size;
+          p.style.left = Math.random() * 100 + 'vw';
+          p.style.animationDuration = Math.random() * 10 + 5 + 's';
+          p.style.animationDelay = Math.random() * 5 + 's';
+          container.appendChild(p);
         }
+      }
 
-        function startSpin() {
-            if (isSpinning) return;
-            isSpinning = true;
-            document.getElementById('spin-btn').classList.add('disabled');
-            document.getElementById('status-msg').innerText = "🔮 運勢轉動中...";
-
-            const winIndex = Math.floor(Math.random() * prizes.length);
-            // 轉盤旋轉度數計算：圈數 + 抵達目標角度
-            const totalRotation = 3600 + (360 - (winIndex * (360 / prizes.length)) - (180 / prizes.length));
-
-            gsap.to("#wheel-canvas", {
-                rotation: totalRotation,
-                duration: 5,
-                ease: "back.out(0.5)", // 加入回彈感
-                onComplete: () => {
-                    finishGame(prizes[winIndex].name);
-                }
-            });
-        }
-
-        async function finishGame(prize) {
-            document.getElementById('status-msg').innerHTML = `🎊 恭喜：<span class="text-amber-400 text-2xl">${prize}</span>`;
-            if (prize !== "銘謝惠顧" && prize !== "再來一次") {
-                await fetch(GAS_URL, {
-                    method: 'POST',
-                    body: JSON.stringify({ action: 'save', userId: userUID, prize: prize })
-                });
-            }
-            if (prize === "再來一次") {
-                setTimeout(() => {
-                    isSpinning = false;
-                    document.getElementById('spin-btn').classList.remove('disabled');
-                    document.getElementById('status-msg').innerText = "獲得一次新機會，請再試一次！";
-                }, 1500);
-            }
-        }
-
-        window.onload = init;
+      window.onload = init;
     </script>
-</body>
+  </body>
 </html>
