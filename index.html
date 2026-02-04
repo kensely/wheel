@@ -15,58 +15,56 @@
         body { font-family: 'Noto Sans TC', sans-serif; background: radial-gradient(circle at center, #7f1d1d 0%, #2a0505 100%); margin: 0; overflow: hidden; height: 100vh; color: white; }
         .font-calligraphy { font-family: 'Ma Shan Zheng', cursive; }
         #loading-overlay { position: fixed; inset: 0; background: #2a0505; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        
-        /* 轉盤容器 */
-        .wheel-outer { position: relative; width: 320px; height: 320px; margin: 20px auto; border: 10px solid #f59e0b; border-radius: 50%; box-shadow: 0 0 30px rgba(245, 158, 11, 0.4); background: #f59e0b; }
-        #wheel-canvas { width: 100%; height: 100%; transform: rotate(0deg); }
-        
-        /* 指針 */
-        .pointer { position: absolute; top: -20px; left: 50%; transform: translateX(-50%); width: 40px; height: 50px; z-index: 10; filter: drop-shadow(0 5px 5px rgba(0,0,0,0.5)); }
-        
-        /* 按鈕 */
-        .btn-spin { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 80px; height: 80px; background: radial-gradient(#fff, #f59e0b); color: #7f1d1d; border-radius: 50%; font-weight: 900; border: 4px solid #7f1d1d; cursor: pointer; z-index: 11; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 0 #b45309; transition: 0.1s; }
-        .btn-spin:active { transform: translate(-50%, -46%); box-shadow: 0 0px 0 #b45309; }
-        .btn-spin.disabled { filter: grayscale(1); pointer-events: none; }
+        .wheel-container { position: relative; width: 340px; height: 340px; margin: 20px auto; }
+        .wheel-border { position: absolute; inset: -15px; border: 12px solid #f59e0b; border-radius: 50%; box-shadow: 0 0 40px rgba(245, 158, 11, 0.6); z-index: 5; pointer-events: none; }
+        #wheel-canvas { width: 100%; height: 100%; border-radius: 50%; }
+        .pointer { position: absolute; top: -30px; left: 50%; transform: translateX(-50%); width: 45px; z-index: 10; filter: drop-shadow(0 5px 8px rgba(0,0,0,0.6)); }
+        .spin-btn { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 70px; height: 70px; background: #f59e0b; color: #7f1d1d; border-radius: 50%; font-weight: 900; border: 4px solid #fff; z-index: 20; display: flex; align-items: center; justify-content: center; box-shadow: 0 5px 15px rgba(0,0,0,0.4); cursor: pointer; font-size: 1.2rem; }
+        .spin-btn:active { transform: translate(-50%, -45%); box-shadow: 0 2px 10px rgba(0,0,0,0.4); }
+        .disabled { filter: grayscale(1); pointer-events: none; opacity: 0.7; }
     </style>
 </head>
 <body>
     <div id="loading-overlay">
-        <div class="text-6xl mb-4 animate-bounce">🧧</div>
-        <div id="loading-text" class="text-xl font-bold font-calligraphy text-amber-400">正在確認開運資格...</div>
+        <div class="text-6xl mb-4 animate-bounce">🏮</div>
+        <div id="loading-text" class="text-xl font-bold font-calligraphy text-amber-400">正在領取開運資格...</div>
     </div>
 
-    <div class="flex flex-col items-center justify-center min-h-screen p-4 text-center">
-        <h1 class="text-5xl font-calligraphy text-amber-400 mb-2 drop-shadow-lg">馬到成功</h1>
-        <p class="text-amber-200/60 text-sm tracking-widest mb-12">幸運大轉盤</p>
+    <div class="flex flex-col items-center justify-center min-h-screen p-4">
+        <h1 class="text-5xl font-calligraphy text-amber-400 mb-2 drop-shadow-xl">馬到成功</h1>
+        <p class="text-amber-200/50 text-sm tracking-widest mb-10 italic">── 幸運大轉盤 ──</p>
 
-        <div class="wheel-outer">
+        <div class="wheel-container">
             <img src="https://cdn-icons-png.flaticon.com/512/8215/8215539.png" class="pointer" alt="pointer">
+            <div class="wheel-border"></div>
             <canvas id="wheel-canvas"></canvas>
-            <div id="spin-button" class="btn-spin" onclick="startSpin()">抽獎</div>
+            <div id="spin-btn" class="spin-btn" onclick="startSpin()">抽獎</div>
         </div>
 
-        <div id="status-msg" class="text-amber-200 text-lg mt-10 h-8 font-bold">點擊中間按鈕開始抽獎</div>
+        <div id="status-msg" class="text-amber-100 text-lg mt-12 h-8 font-bold tracking-widest drop-shadow-md">
+            點擊「抽獎」啟動好運
+        </div>
+        
+        <button onclick="liff.closeWindow()" class="mt-8 text-amber-500/60 underline text-sm">離開遊戲</button>
     </div>
 
     <script>
-        const LIFF_ID = '1569792743-bsbm1zLE'; 
+        const LIFF_ID = '1569792743-2S9Zy8IT'; // 建議更換為新 LIFF ID
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbwsmCxklPsVoozRdPggUmh81IXatVZfWEG9dAD7iDkNwQHWJKoJe-idX4BLmF1_GLzZGg/exec';
         let userUID = "";
         let isSpinning = false;
 
-        // 獎項設定
         const prizes = [
-            { name: "50元折價券", color: "#7f1d1d" },
-            { name: "銘謝惠顧", color: "#b45309" },
+            { name: "50元折價券", color: "#991b1b" },
+            { name: "銘謝惠顧", color: "#2a0505" },
             { name: "100元折價券", color: "#7f1d1d" },
+            { name: "開運糖果", color: "#2a0505" },
             { name: "再來一次", color: "#b45309" },
-            { name: "開運小禮", color: "#7f1d1d" },
-            { name: "驚喜大獎", color: "#b45309" }
+            { name: "神祕驚喜", color: "#2a0505" }
         ];
 
-        // 1. 初始化
         async function init() {
-            drawWheel();
+            renderWheel();
             try {
                 await liff.init({ liffId: LIFF_ID });
                 if (!liff.isLoggedIn()) { liff.login(); return; }
@@ -88,72 +86,68 @@
             }
         }
 
-        // 2. 繪製轉盤
-        function drawWheel() {
+        function renderWheel() {
             const canvas = document.getElementById('wheel-canvas');
             const ctx = canvas.getContext('2d');
-            canvas.width = 600; canvas.height = 600;
-            const centerX = 300; const centerY = 300;
-            const radius = 300;
-            const sliceAngle = (Math.PI * 2) / prizes.length;
+            canvas.width = 800; canvas.height = 800;
+            const cx = 400, cy = 400, r = 380;
+            const step = (Math.PI * 2) / prizes.length;
 
-            prizes.forEach((prize, i) => {
-                const angle = i * sliceAngle;
+            prizes.forEach((p, i) => {
+                const angle = i * step;
                 ctx.beginPath();
-                ctx.fillStyle = prize.color;
-                ctx.moveTo(centerX, centerY);
-                ctx.arc(centerX, centerY, radius, angle, angle + sliceAngle);
+                ctx.fillStyle = p.color;
+                ctx.moveTo(cx, cy);
+                ctx.arc(cx, cy, r, angle, angle + step);
                 ctx.fill();
+                ctx.strokeStyle = "#f59e0b";
+                ctx.lineWidth = 2;
                 ctx.stroke();
 
-                // 畫文字
                 ctx.save();
-                ctx.translate(centerX, centerY);
-                ctx.rotate(angle + sliceAngle / 2);
-                ctx.textAlign = "right";
-                ctx.fillStyle = "#f59e0b";
-                ctx.font = "bold 34px Noto Sans TC";
-                ctx.fillText(prize.name, radius - 40, 10);
+                ctx.translate(cx, cy);
+                ctx.rotate(angle + step / 2);
+                ctx.fillStyle = "#fbbf24";
+                ctx.font = "900 38px Noto Sans TC";
+                ctx.fillText(p.name, r / 2.5, 15);
                 ctx.restore();
             });
         }
 
-        // 3. 旋轉邏輯
         function startSpin() {
             if (isSpinning) return;
             isSpinning = true;
-            document.getElementById('spin-button').classList.add('disabled');
-            document.getElementById('status-msg').innerText = "好運轉動中...";
+            document.getElementById('spin-btn').classList.add('disabled');
+            document.getElementById('status-msg').innerText = "🔮 運勢轉動中...";
 
-            // 隨機決定中獎索引 (0-5)
-            const prizeIndex = Math.floor(Math.random() * prizes.length);
-            const stopAngle = 3600 + (360 - (prizeIndex * (360 / prizes.length)) - (180 / prizes.length));
+            const winIndex = Math.floor(Math.random() * prizes.length);
+            // 轉盤旋轉度數計算：圈數 + 抵達目標角度
+            const totalRotation = 3600 + (360 - (winIndex * (360 / prizes.length)) - (180 / prizes.length));
 
             gsap.to("#wheel-canvas", {
-                rotation: stopAngle,
+                rotation: totalRotation,
                 duration: 5,
-                ease: "power4.out",
+                ease: "back.out(0.5)", // 加入回彈感
                 onComplete: () => {
-                    handleWin(prizes[prizeIndex].name);
+                    finishGame(prizes[winIndex].name);
                 }
             });
         }
 
-        async function handleWin(prizeName) {
-            document.getElementById('status-msg').innerText = `🎉 恭喜獲得：${prizeName}`;
-            if (prizeName !== "銘謝惠顧" && prizeName !== "再來一次") {
+        async function finishGame(prize) {
+            document.getElementById('status-msg').innerHTML = `🎊 恭喜：<span class="text-amber-400 text-2xl">${prize}</span>`;
+            if (prize !== "銘謝惠顧" && prize !== "再來一次") {
                 await fetch(GAS_URL, {
                     method: 'POST',
-                    body: JSON.stringify({ action: 'save', userId: userUID, prize: prizeName })
+                    body: JSON.stringify({ action: 'save', userId: userUID, prize: prize })
                 });
-                document.getElementById('status-msg').innerText += " (已自動存檔)";
             }
-            // 兩秒後可以再次點擊 (如果是再來一次)
-            if (prizeName === "再來一次") {
+            if (prize === "再來一次") {
                 setTimeout(() => {
                     isSpinning = false;
-                    document.getElementById('spin-button').classList.remove('disabled');
-                }, 2000);
+                    document.getElementById('spin-btn').classList.remove('disabled');
+                    document.getElementById('status-msg').innerText = "獲得一次新機會，請再試一次！";
+                }, 1500);
             }
         }
 
