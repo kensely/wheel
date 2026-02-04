@@ -1,214 +1,362 @@
+
 <!DOCTYPE html>
 <html lang="zh-TW">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>馬到成功：樂透金大轉盤</title>
-    
-    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <title>馬到成功：午馬開運抽</title>
+    <!-- 外部資源載入 -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Sans+TC:wght@400;700;900&family=Zhi+Mang+Xing&display=swap" rel="stylesheet">
     
     <style>
       html, body {
         overscroll-behavior: none;
-        height: 100%; width: 100%;
+        height: 100%;
+        width: 100%;
         background: #2a0505;
-        margin: 0; overflow: hidden;
+        margin: 0;
+        overflow-x: hidden;
       }
       body {
         font-family: 'Noto Sans TC', sans-serif;
         background: radial-gradient(circle at center, #7f1d1d 0%, #2a0505 100%);
       }
       .font-calligraphy { font-family: 'Ma Shan Zheng', cursive; }
+      .font-signature { font-family: 'Zhi Mang Xing', cursive; }
       
       .particle {
-        position: fixed; pointer-events: none;
+        position: fixed;
+        pointer-events: none;
         background: linear-gradient(135deg, #f59e0b, transparent);
-        border-radius: 50%; opacity: 0.3;
+        border-radius: 50%;
+        z-index: 0;
+        opacity: 0.3;
         animation: float-up linear infinite;
-        z-index: 1;
       }
       @keyframes float-up {
         0% { transform: translateY(110vh) translateX(0) scale(1); opacity: 0; }
         20% { opacity: 0.4; }
+        80% { opacity: 0.4; }
         100% { transform: translateY(-10vh) translateX(50px) scale(0.5); opacity: 0; }
       }
 
-      .game-container {
-        position: relative; z-index: 10;
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
-        min-height: 100vh; padding: 20px;
+      @keyframes burst {
+        0% { transform: scale(1); filter: brightness(1); }
+        40% { transform: scale(1.08); filter: brightness(1.5); }
+        100% { transform: scale(1); filter: brightness(1); }
       }
-      .wheel-outer {
-        position: relative;
-        width: 320px; height: 320px;
-        border: 8px solid #f59e0b;
-        border-radius: 50%;
-        box-shadow: 0 0 50px rgba(0,0,0,0.8), inset 0 0 20px rgba(245,158,11,0.5);
-        background: #f59e0b;
-        margin: 20px auto;
+      .animate-burst { animation: burst 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+
+      .glass-card {
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
       }
-      #wheel-canvas { width: 100%; height: 100%; border-radius: 50%; }
       
-      .pointer {
-        position: absolute; top: -25px; left: 50%;
-        transform: translateX(-50%); width: 40px;
-        z-index: 30; filter: drop-shadow(0 5px 10px rgba(0,0,0,0.8));
+      .gold-border {
+        border: 2px solid #f59e0b;
+        box-shadow: 0 0 15px rgba(245, 158, 11, 0.3);
       }
 
-      .spin-btn {
-        position: absolute; top: 50%; left: 50%;
-        transform: translate(-50%, -50%);
-        width: 70px; height: 70px;
-        background: radial-gradient(#fff, #f59e0b);
-        color: #7f1d1d; border-radius: 50%;
-        font-weight: 900; border: 4px solid #7f1d1d;
-        z-index: 40; display: flex; align-items: center; justify-content: center;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.5); cursor: pointer;
+      .btn-gold {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);
       }
-      .spin-btn:active { transform: translate(-50%, -46%); box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
-      
-      #loading-overlay {
-        position: fixed; inset: 0; z-index: 9999;
-        background: radial-gradient(circle at center, #7f1d1d 0%, #2a0505 100%);
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
-      }
+
+      .scrollbar-hide::-webkit-scrollbar { display: none; }
+      .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
-  </head>
+  <link rel="stylesheet" href="/index.css">
+</head>
   <body>
-    <div id="loading-overlay">
-      <div class="text-6xl mb-4 animate-bounce">🧧</div>
-      <div id="loading-text" class="text-xl font-bold font-calligraphy text-amber-400">正在確認開運資格...</div>
-    </div>
-
+    <div id="root"></div>
     <div id="bg-particles"></div>
 
-    <div class="game-container">
-      <h1 class="text-5xl font-calligraphy text-yellow-500 mb-2 drop-shadow-2xl">馬到成功</h1>
-      <p class="text-yellow-600/60 text-sm tracking-[0.3em] mb-10 font-bold italic">LOTTO GOLD SPIN</p>
-
-      <div class="wheel-outer">
-        <img src="https://cdn-icons-png.flaticon.com/512/8215/8215539.png" class="pointer" alt="pointer">
-        <canvas id="wheel-canvas"></canvas>
-        <div id="spin-btn" class="spin-btn" onclick="startSpin()">抽獎</div>
-      </div>
-
-      <div id="status-msg" class="mt-12 p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md text-yellow-200/80 text-sm tracking-widest text-center">
-        轉動大轉盤，贏取樂透金獎勵
-      </div>
-    </div>
-
     <script>
-      const LIFF_ID = '1569792743-2S9Zy8IT';
-      const GAS_URL = 'https://script.google.com/macros/s/AKfycbwsmCxklPsVoozRdPggUmh81IXatVZfWEG9dAD7iDkNwQHWJKoJe-idX4BLmF1_GLzZGg/exec';
-      let userUID = "";
-      let isSpinning = false;
-
-      // 更新後的獎項名單
-      const prizes = [
-        { name: "5 樂透金", color: "#7f1d1d" },
-        { name: "10 樂透金", color: "#3d0a0a" },
-        { name: "15 樂透金", color: "#991b1b" },
-        { name: "20 樂透金", color: "#450a0a" }
-      ];
-
-      async function init() {
-        drawWheel();
-        createParticles();
-        try {
-          await liff.init({ liffId: LIFF_ID });
-          if (!liff.isLoggedIn()) { liff.login(); return; }
-          const profile = await liff.getProfile();
-          userUID = profile.userId;
-
-          const res = await fetch(GAS_URL, {
-            method: 'POST',
-            body: JSON.stringify({ action: 'check', userId: userUID })
-          });
-          const data = await res.json();
-          if (data.canPlay) {
-            document.getElementById('loading-overlay').style.display = 'none';
-          } else {
-            document.getElementById('loading-text').innerHTML = "❌ 您已參加過本活動<br><small>每位會員限參加一次</small>";
-          }
-        } catch (e) {
-          document.getElementById('loading-overlay').style.display = 'none';
-        }
+      const container = document.getElementById('bg-particles');
+      for (let i = 0; i < 25; i++) {
+        const p = document.createElement('div');
+        p.className = 'particle';
+        const size = Math.random() * 5 + 2 + 'px';
+        p.style.width = size;
+        p.style.height = size;
+        p.style.left = Math.random() * 100 + 'vw';
+        p.style.animationDuration = Math.random() * 15 + 10 + 's';
+        p.style.animationDelay = Math.random() * 5 + 's';
+        container.appendChild(p);
       }
+    </script>
 
-      function drawWheel() {
-        const canvas = document.getElementById('wheel-canvas');
-        const ctx = canvas.getContext('2d');
-        canvas.width = 800; canvas.height = 800;
-        const cx = 400, cy = 400, r = 380;
-        const step = (Math.PI * 2) / prizes.length;
+    <script type="text/babel">
+      const { useState, useEffect, useRef, useCallback } = React;
 
-        prizes.forEach((p, i) => {
-          const angle = i * step;
+      const LIFF_ID = '1569792743-2S9Zy8IT';
+      const GAS_URL = 'https://script.google.com/macros/s/AKfycbwsmCxklPsVoozRdPggUmh81IXatVZfWEG9dAD7iDkNwQHWJKoJe-idX4BLuUq7C5P2/exec';
+      const PRIZES = ['5 樂透金', '20 樂透金', '15 樂透金', '10 樂透金'];
+      const COLORS = ['#991b1b', '#f59e0b', '#7f1d1d', '#fbbf24'];
+      const TEXT_COLORS = ['#fbbf24', '#7f1d1d', '#fde68a', '#991b1b'];
+
+      const LuckyWheel = ({ onSpinStart, onSpinEnd, disabled }) => {
+        const canvasRef = useRef(null);
+        const containerRef = useRef(null);
+        const currentRotation = useRef(0);
+
+        const drawWheel = useCallback(() => {
+          const canvas = canvasRef.current;
+          if (!canvas) return;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return;
+          const size = canvas.width;
+          const centerX = size / 2;
+          const centerY = size / 2;
+          const radius = size / 2 - 10;
+          const sliceAngle = (Math.PI * 2) / PRIZES.length;
+
+          ctx.clearRect(0, 0, size, size);
+          PRIZES.forEach((prize, i) => {
+            const angle = i * sliceAngle;
+            ctx.beginPath();
+            ctx.fillStyle = COLORS[i % COLORS.length];
+            ctx.moveTo(centerX, centerY);
+            ctx.arc(centerX, centerY, radius, angle, angle + sliceAngle);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            ctx.save();
+            ctx.translate(centerX, centerY);
+            ctx.rotate(angle + sliceAngle / 2);
+            ctx.textAlign = 'right';
+            ctx.fillStyle = TEXT_COLORS[i % TEXT_COLORS.length];
+            ctx.font = 'bold 20px Noto Sans TC';
+            ctx.fillText(prize, radius - 30, 10);
+            ctx.restore();
+          });
+
           ctx.beginPath();
-          ctx.fillStyle = p.color;
-          ctx.moveTo(cx, cy);
-          ctx.arc(cx, cy, r, angle, angle + step);
+          ctx.arc(centerX, centerY, 45, 0, Math.PI * 2);
+          ctx.fillStyle = '#f59e0b';
           ctx.fill();
-          ctx.strokeStyle = "rgba(245,158,11,0.5)";
+          ctx.strokeStyle = '#2a0505';
           ctx.lineWidth = 4;
           ctx.stroke();
 
-          ctx.save();
-          ctx.translate(cx, cy);
-          ctx.rotate(angle + step / 2);
-          ctx.fillStyle = "#fbbf24";
-          ctx.font = "bold 50px Noto Sans TC";
-          ctx.textAlign = "right";
-          ctx.fillText(p.name, r - 60, 18);
-          ctx.restore();
-        });
-      }
+          ctx.fillStyle = '#2a0505';
+          ctx.font = 'bold 20px Noto Sans TC';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('抽獎', centerX, centerY);
+        }, []);
 
-      function startSpin() {
-        if (isSpinning) return;
-        isSpinning = true;
-        document.getElementById('spin-btn').style.opacity = "0.5";
-        document.getElementById('status-msg').innerText = "🔮 樂透金好運計算中...";
+        useEffect(() => drawWheel(), [drawWheel]);
 
-        const winIndex = Math.floor(Math.random() * prizes.length);
-        const totalRotation = 3600 + (360 - (winIndex * (360 / prizes.length)) - (180 / prizes.length));
+        const handleSpin = () => {
+          if (disabled) return;
+          onSpinStart();
+          const extraDegrees = Math.floor(Math.random() * 360);
+          const totalDegrees = currentRotation.current + (360 * 8) + extraDegrees;
+          gsap.to(containerRef.current, {
+            rotation: totalDegrees,
+            duration: 5,
+            ease: 'power4.out',
+            onComplete: () => {
+              currentRotation.current = totalDegrees;
+              const normalizedDegree = (totalDegrees % 360);
+              const prizeIndex = Math.floor(((360 - normalizedDegree + 270) % 360) / (360 / PRIZES.length));
+              onSpinEnd(PRIZES[prizeIndex]);
+            }
+          });
+        };
 
-        gsap.to("#wheel-canvas", {
-          rotation: totalRotation,
-          duration: 5,
-          ease: "back.out(0.4)",
-          onComplete: () => {
-            handleResult(prizes[winIndex].name);
+        return (
+          <div className="relative flex items-center justify-center select-none scale-90 md:scale-100">
+            <div className="absolute top-[-15px] left-1/2 -translate-x-1/2 z-20 w-10 h-12 filter drop-shadow-lg pointer-events-none">
+              <svg viewBox="0 0 100 100" fill="#f59e0b">
+                <path d="M50 100 L10 20 Q50 0 90 20 Z" />
+              </svg>
+            </div>
+            <div ref={containerRef} className={`relative cursor-pointer transition-transform duration-300 ${disabled ? 'cursor-not-allowed opacity-90' : 'hover:scale-105 active:scale-95'}`} onClick={handleSpin}>
+              <canvas ref={canvasRef} width={360} height={360} className="rounded-full shadow-2xl" />
+              <div className="absolute inset-0 rounded-full pointer-events-none opacity-20 bg-gradient-to-tr from-white/0 via-white/30 to-white/0"></div>
+            </div>
+          </div>
+        );
+      };
+
+      const App = () => {
+        const [isSpinning, setIsSpinning] = useState(false);
+        const [prize, setPrize] = useState(null);
+        const [userId, setUserId] = useState('');
+        const [userName, setUserName] = useState('');
+        const [loading, setLoading] = useState(true);
+        const [verifyCode, setVerifyCode] = useState('');
+        const [copied, setCopied] = useState(false);
+
+        useEffect(() => {
+          const init = async () => {
+            try {
+              if (typeof liff !== 'undefined') {
+                await liff.init({ liffId: LIFF_ID });
+                if (!liff.isLoggedIn()) {
+                  liff.login();
+                } else {
+                  const profile = await liff.getProfile();
+                  setUserId(profile.userId);
+                  setUserName(profile.displayName);
+                }
+              }
+            } catch (err) {
+              console.warn('LIFF 載入失敗或非 LINE 環境:', err);
+              setUserId('GUEST_' + Math.floor(Math.random() * 1000));
+              setUserName('開運賓客');
+            } finally {
+              setTimeout(() => setLoading(false), 1000);
+            }
+          };
+          init();
+        }, []);
+
+        const handleSpinEnd = async (selectedPrize) => {
+          const code = Array.from({length: 8}, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 32)]).join('');
+          setVerifyCode(code);
+          setPrize(selectedPrize);
+          setIsSpinning(false);
+          
+          try {
+            fetch(GAS_URL, {
+              method: 'POST',
+              mode: 'no-cors',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'save', userId, displayName: userName, prize: selectedPrize, code, timestamp: new Date().toISOString() }),
+            });
+          } catch (e) {}
+        };
+
+        const copyCode = () => {
+          navigator.clipboard.writeText(verifyCode).then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+          });
+        };
+
+        const sendToLine = () => {
+          if (typeof liff !== 'undefined' && liff.isInClient()) {
+            liff.sendMessages([{
+              type: 'text',
+              text: `🧧【午馬開運抽】活動快報！\n\n恭喜 ${userName} 抽中獎項：\n✨ ${prize} ✨\n\n🔑 領獎驗證碼：${verifyCode}\n\n請憑此驗證碼前往官方帳號完成兌換！`
+            }]).then(() => liff.closeWindow()).catch(() => alert('傳送失敗，請手動截圖保留驗證碼'));
+          } else {
+            alert('請在 LINE App 內使用此功能');
           }
-        });
-      }
+        };
 
-      async function handleResult(prize) {
-        document.getElementById('status-msg').innerHTML = `🎊 恭喜獲得：<span class="text-yellow-400 font-bold text-2xl">${prize}</span>`;
-        await fetch(GAS_URL, {
-          method: 'POST',
-          body: JSON.stringify({ action: 'save', userId: userUID, prize: prize })
-        });
-      }
+        if (loading) return (
+          <div className="fixed inset-0 flex flex-col items-center justify-center z-50 bg-[#2a0505]">
+            <div className="text-amber-500 font-calligraphy text-5xl animate-pulse mb-4">午馬祈福</div>
+            <div className="w-48 h-1 bg-white/10 rounded-full overflow-hidden">
+              <div className="h-full bg-amber-500 animate-[shimmer_2s_infinite] w-full origin-left scale-x-0" style={{animation: 'load 1.5s ease-out forwards'}}></div>
+            </div>
+            <style>{`@keyframes load { from { transform: scaleX(0); } to { transform: scaleX(1); } }`}</style>
+          </div>
+        );
 
-      function createParticles() {
-        const container = document.getElementById('bg-particles');
-        for (let i = 0; i < 20; i++) {
-          const p = document.createElement('div');
-          p.className = 'particle';
-          const size = Math.random() * 5 + 2 + 'px';
-          p.style.width = size; p.style.height = size;
-          p.style.left = Math.random() * 100 + 'vw';
-          p.style.animationDuration = Math.random() * 10 + 5 + 's';
-          p.style.animationDelay = Math.random() * 5 + 's';
-          container.appendChild(p);
-        }
-      }
+        return (
+          <main className="relative min-h-screen flex flex-col items-center justify-start py-8 px-4 overflow-y-auto scrollbar-hide">
+            <div className="z-10 text-center mb-8">
+              <h1 className="text-6xl md:text-7xl font-calligraphy text-amber-500 drop-shadow-[0_2px_15px_rgba(245,158,11,0.6)] mb-2">午馬開運抽</h1>
+              <p className="text-amber-200/80 font-signature text-3xl">馬到成功 ‧ 財運亨通</p>
+            </div>
 
-      window.onload = init;
+            <div className="glass-card gold-border rounded-[2.5rem] p-6 md:p-10 w-full max-w-md relative z-10 mb-8 overflow-hidden">
+              <div className="absolute top-0 right-0 bg-amber-500 text-red-950 font-black px-5 py-1 rounded-bl-2xl shadow-lg text-xs tracking-tighter uppercase">Est. 2025</div>
+              
+              <LuckyWheel onSpinStart={() => setIsSpinning(true)} onSpinEnd={handleSpinEnd} disabled={isSpinning || !!prize} />
+
+              {prize ? (
+                <div className="mt-8 text-center animate-burst">
+                  <p className="text-amber-200/60 text-sm mb-1">恭喜您喜獲獎項</p>
+                  <h2 className="text-5xl font-calligraphy text-amber-500 mb-6 drop-shadow-sm">{prize}</h2>
+                  
+                  <div className="bg-white/5 border border-amber-500/30 rounded-2xl p-4 mb-6 relative group overflow-hidden">
+                    <p className="text-amber-500/50 text-[10px] uppercase tracking-[0.2em] mb-2 font-bold">Verification Code</p>
+                    <div className="text-3xl font-mono text-amber-400 font-black tracking-widest">{verifyCode}</div>
+                    <button onClick={copyCode} className="mt-3 text-sm text-amber-500 hover:text-amber-300 flex items-center justify-center gap-1 mx-auto transition-colors font-bold">
+                      {copied ? '✨ 已複製成功' : '📋 點擊複製驗證碼'}
+                    </button>
+                  </div>
+
+                  <div className="space-y-3">
+                    <button onClick={sendToLine} className="w-full py-4 btn-gold text-red-950 font-black rounded-2xl transition-all active:scale-95 flex items-center justify-center gap-2 text-lg">
+                      <span>傳送結果回 LINE</span>
+                    </button>
+                    <button onClick={() => window.location.reload()} className="w-full py-2 text-amber-500/60 hover:text-amber-500 transition-colors text-sm font-bold">
+                      返回首頁 / 再次挑戰
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-8 text-center">
+                  <div className="inline-block px-6 py-2 rounded-full border border-amber-500/20 text-amber-200/50 text-sm animate-pulse">
+                    {isSpinning ? '金輪旋轉，好運將至...' : '點擊轉盤中心開始祈福'}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 活動文案區 - 繼承刮刮樂版本 */}
+            <div className="glass-card border border-white/10 rounded-3xl p-6 w-full max-w-md z-10 mb-10">
+              <h3 className="text-amber-500 font-black text-xl mb-4 flex items-center gap-3">
+                <span className="w-1.5 h-6 bg-amber-500 rounded-full shadow-[0_0_10px_rgba(245,158,11,0.5)]"></span>
+                活動辦法與領獎說明
+              </h3>
+              <div className="space-y-4 text-amber-100/70 text-sm leading-relaxed">
+                <p className="flex items-start gap-2">
+                  <span className="text-amber-500 mt-1">●</span>
+                  <span>活動日期：2025年1月1日 至 2月28日 23:59止。</span>
+                </p>
+                <p className="flex items-start gap-2">
+                  <span className="text-amber-500 mt-1">●</span>
+                  <span>每位 LINE 好友每日享有一次開運抽獎機會，獎項隨機發放。</span>
+                </p>
+                <p className="flex items-start gap-2 font-bold text-amber-200">
+                  <span className="text-amber-500 mt-1">●</span>
+                  <span>獲獎後請務必點擊【傳送結果回 LINE】按鈕，並憑驗證碼至官方帳號進行人工審核領獎。</span>
+                </p>
+                <p className="flex items-start gap-2">
+                  <span className="text-amber-500 mt-1">●</span>
+                  <span>樂透金將於驗證成功後之次一工作日自動發放至您的帳戶。</span>
+                </p>
+                <div className="pt-4 border-t border-white/5 text-[11px] text-amber-500/50 italic">
+                  * 本活動受服務條款規範，本公司保留隨時修正、暫停或終止本活動之權利。
+                </div>
+              </div>
+            </div>
+
+            <div className="z-10 text-center pb-10">
+              <div className="flex items-center justify-center gap-6 mb-3">
+                <div className="w-16 h-[1px] bg-gradient-to-r from-transparent to-amber-500/40"></div>
+                <span className="text-amber-500/60 font-signature text-3xl tracking-widest">五樂透金</span>
+                <div className="w-16 h-[1px] bg-gradient-to-l from-transparent to-amber-500/40"></div>
+              </div>
+              <p className="text-amber-500/30 text-[9px] uppercase tracking-widest">Global Lucky System v3.0 ‧ Exclusive for VIP</p>
+            </div>
+          </main>
+        );
+      };
+
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(<App />);
     </script>
-  </body>
+  <script type="module" src="/index.tsx"></script>
+</body>
 </html>
