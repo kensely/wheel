@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>馬到成功：幸運大轉盤</title>
+    <script src="https://unpkg.com/vconsole@latest/dist/vconsole.min.js"></script>
+    <script>var vConsole = new window.VConsole();</script>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Noto Sans TC', sans-serif; background: radial-gradient(circle at center, #7f1d1d 0%, #2a0505 100%); margin: 0; overflow: hidden; height: 100vh; color: white; }
+        .font-calligraphy { font-family: 'Ma Shan Zheng', cursive; }
+        #loading-overlay { position: fixed; inset: 0; background: #2a0505; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        
+        /* 轉盤容器 */
+        .wheel-outer { position: relative; width: 320px; height: 320px; margin: 20px auto; border: 10px solid #f59e0b; border-radius: 50%; box-shadow: 0 0 30px rgba(245, 158, 11, 0.4); background: #f59e0b; }
+        #wheel-canvas { width: 100%; height: 100%; transform: rotate(0deg); }
+        
+        /* 指針 */
+        .pointer { position: absolute; top: -20px; left: 50%; transform: translateX(-50%); width: 40px; height: 50px; z-index: 10; filter: drop-shadow(0 5px 5px rgba(0,0,0,0.5)); }
+        
+        /* 按鈕 */
+        .btn-spin { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 80px; height: 80px; background: radial-gradient(#fff, #f59e0b); color: #7f1d1d; border-radius: 50%; font-weight: 900; border: 4px solid #7f1d1d; cursor: pointer; z-index: 11; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 0 #b45309; transition: 0.1s; }
+        .btn-spin:active { transform: translate(-50%, -46%); box-shadow: 0 0px 0 #b45309; }
+        .btn-spin.disabled { filter: grayscale(1); pointer-events: none; }
+    </style>
+</head>
+<body>
+    <div id="loading-overlay">
+        <div class="text-6xl mb-4 animate-bounce">🧧</div>
+        <div id="loading-text" class="text-xl font-bold font-calligraphy text-amber-400">正在確認開運資格...</div>
+    </div>
+
+    <div class="flex flex-col items-center justify-center min-h-screen p-4 text-center">
+        <h1 class="text-5xl font-calligraphy text-amber-400 mb-2 drop-shadow-lg">馬到成功</h1>
+        <p class="text-amber-200/60 text-sm tracking-widest mb-12">幸運大轉盤</p>
+
+        <div class="wheel-outer">
+            <img src="https://cdn-icons-png.flaticon.com/512/8215/8215539.png" class="pointer" alt="pointer">
+            <canvas id="wheel-canvas"></canvas>
+            <div id="spin-button" class="btn-spin" onclick="startSpin()">抽獎</div>
+        </div>
+
+        <div id="status-msg" class="text-amber-200 text-lg mt-10 h-8 font-bold">點擊中間按鈕開始抽獎</div>
+    </div>
+
+    <script>
+        const LIFF_ID = '1569792743-bsbm1zLE'; 
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycbwsmCxklPsVoozRdPggUmh81IXatVZfWEG9dAD7iDkNwQHWJKoJe-idX4BLmF1_GLzZGg/exec';
+        let userUID = "";
+        let isSpinning = false;
+
+        // 獎項設定
+        const prizes = [
+            { name: "50元折價券", color: "#7f1d1d" },
+            { name: "銘謝惠顧", color: "#b45309" },
+            { name: "100元折價券", color: "#7f1d1d" },
+            { name: "再來一次", color: "#b45309" },
+            { name: "開運小禮", color: "#7f1d1d" },
+            { name: "驚喜大獎", color: "#b45309" }
+        ];
+
+        // 1. 初始化
+        async function init() {
+            drawWheel();
+            try {
+                await liff.init({ liffId: LIFF_ID });
+                if (!liff.isLoggedIn()) { liff.login(); return; }
+                const profile = await liff.getProfile();
+                userUID = profile.userId;
+
+                const res = await fetch(GAS_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'check', userId: userUID })
+                });
+                const data = await res.json();
+                if (data.canPlay) {
+                    document.getElementById('loading-overlay').style.display = 'none';
+                } else {
+                    document.getElementById('loading-text').innerHTML = "❌ 您已參加過本活動<br><small>每位會員限參加一次</small>";
+                }
+            } catch (e) {
+                document.getElementById('loading-overlay').style.display = 'none';
+            }
+        }
+
+        // 2. 繪製轉盤
+        function drawWheel() {
+            const canvas = document.getElementById('wheel-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = 600; canvas.height = 600;
+            const centerX = 300; const centerY = 300;
+            const radius = 300;
+            const sliceAngle = (Math.PI * 2) / prizes.length;
+
+            prizes.forEach((prize, i) => {
+                const angle = i * sliceAngle;
+                ctx.beginPath();
+                ctx.fillStyle = prize.color;
+                ctx.moveTo(centerX, centerY);
+                ctx.arc(centerX, centerY, radius, angle, angle + sliceAngle);
+                ctx.fill();
+                ctx.stroke();
+
+                // 畫文字
+                ctx.save();
+                ctx.translate(centerX, centerY);
+                ctx.rotate(angle + sliceAngle / 2);
+                ctx.textAlign = "right";
+                ctx.fillStyle = "#f59e0b";
+                ctx.font = "bold 34px Noto Sans TC";
+                ctx.fillText(prize.name, radius - 40, 10);
+                ctx.restore();
+            });
+        }
+
+        // 3. 旋轉邏輯
+        function startSpin() {
+            if (isSpinning) return;
+            isSpinning = true;
+            document.getElementById('spin-button').classList.add('disabled');
+            document.getElementById('status-msg').innerText = "好運轉動中...";
+
+            // 隨機決定中獎索引 (0-5)
+            const prizeIndex = Math.floor(Math.random() * prizes.length);
+            const stopAngle = 3600 + (360 - (prizeIndex * (360 / prizes.length)) - (180 / prizes.length));
+
+            gsap.to("#wheel-canvas", {
+                rotation: stopAngle,
+                duration: 5,
+                ease: "power4.out",
+                onComplete: () => {
+                    handleWin(prizes[prizeIndex].name);
+                }
+            });
+        }
+
+        async function handleWin(prizeName) {
+            document.getElementById('status-msg').innerText = `🎉 恭喜獲得：${prizeName}`;
+            if (prizeName !== "銘謝惠顧" && prizeName !== "再來一次") {
+                await fetch(GAS_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'save', userId: userUID, prize: prizeName })
+                });
+                document.getElementById('status-msg').innerText += " (已自動存檔)";
+            }
+            // 兩秒後可以再次點擊 (如果是再來一次)
+            if (prizeName === "再來一次") {
+                setTimeout(() => {
+                    isSpinning = false;
+                    document.getElementById('spin-button').classList.remove('disabled');
+                }, 2000);
+            }
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
