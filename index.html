@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>馬到成功：午馬開運大輪盤</title>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Sans+TC:wght@400;700;900&family=Zhi+Mang+Xing&display=swap" rel="stylesheet">
+    
+    <style>
+      /* 繼承 App.tsx 與 index.html 的視覺樣式 */
+      html, body {
+        overscroll-behavior: none;
+        height: 100%; width: 100%; background: #2a0505; margin: 0; overflow-x: hidden;
+      }
+      body {
+        font-family: 'Noto Sans TC', sans-serif;
+        background: radial-gradient(circle at center, #7f1d1d 0%, #2a0505 100%);
+      }
+      .font-calligraphy { font-family: 'Ma Shan Zheng', cursive; }
+      
+      /* 背景粒子特效 */
+      .particle {
+        position: fixed; pointer-events: none;
+        background: linear-gradient(135deg, #f59e0b, transparent);
+        border-radius: 50%; opacity: 0.3;
+        animation: float-up linear infinite; z-index: 1;
+      }
+      @keyframes float-up {
+        0% { transform: translateY(110vh) translateX(0) scale(1); opacity: 0; }
+        20% { opacity: 0.4; }
+        100% { transform: translateY(-10vh) translateX(50px) scale(0.5); opacity: 0; }
+      }
+
+      /* 輪盤主體 */
+      .wheel-box {
+        position: relative; width: 340px; height: 340px; margin: 0 auto;
+        border: 12px solid #f59e0b; border-radius: 50%;
+        box-shadow: 0 0 50px rgba(0,0,0,0.8); background: #2a0505;
+      }
+      #wheel-canvas { width: 100%; height: 100%; border-radius: 50%; }
+      .pointer {
+        position: absolute; top: -30px; left: 50%; transform: translateX(-50%);
+        width: 45px; z-index: 30; filter: drop-shadow(0 5px 10px rgba(0,0,0,0.6));
+      }
+      .spin-btn {
+        position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        width: 75px; height: 75px; background: #f59e0b; color: #7f1d1d;
+        border-radius: 50%; font-weight: 900; border: 4px solid #fff;
+        z-index: 40; display: flex; align-items: center; justify-content: center;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.4); cursor: pointer; font-size: 1.2rem;
+      }
+      .disabled { filter: grayscale(1); pointer-events: none; opacity: 0.7; }
+
+      /* 加載遮罩 */
+      #loading-overlay {
+        position: fixed; inset: 0; z-index: 9999;
+        background: radial-gradient(circle at center, #7f1d1d 0%, #2a0505 100%);
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="loading-overlay">
+      <div class="text-6xl mb-4 animate-bounce">🧧</div>
+      <div id="loading-text" class="text-xl font-bold font-calligraphy text-amber-400 text-center">正在確認開運資格...</div>
+    </div>
+
+    <div id="bg-particles"></div>
+
+    <div class="relative z-10 flex flex-col items-center justify-center min-h-screen p-4 pt-12">
+      <h1 class="text-5xl font-calligraphy text-yellow-500 mb-2 drop-shadow-2xl">馬到成功</h1>
+      <p class="text-yellow-600/60 text-sm tracking-[0.3em] mb-12 font-bold italic">LOTTO GOLD SPIN</p>
+
+      <div class="wheel-box">
+        <img src="https://cdn-icons-png.flaticon.com/512/8215/8215539.png" class="pointer" alt="pointer">
+        <canvas id="wheel-canvas"></canvas>
+        <div id="spin-btn" class="spin-btn" onclick="startSpin()">抽獎</div>
+      </div>
+
+      <div id="status-msg" class="mt-16 p-6 rounded-[24px] bg-black/40 border border-yellow-600/30 backdrop-blur-md text-yellow-200 text-center w-full max-w-[320px]">
+        點擊中心按鈕，抽取您的午馬年樂透金
+      </div>
+      
+      <button onclick="liff.closeWindow()" class="mt-10 text-yellow-600/50 underline text-xs">離開遊戲</button>
+    </div>
+
+    <script>
+      const LIFF_ID = '1569792743-2S9Zy8IT';
+      const GAS_URL = 'https://script.google.com/macros/s/AKfycbwsmCxklPsVoozRdPggUmh81IXatVZfWEG9dAD7iDkNwQHWJKoJe-idX4BLmF1_GLzZGg/exec';
+      let userUID = "";
+      let isSpinning = false;
+
+      // 獎項配置 (5, 10, 15, 20)
+      const prizes = [
+        { name: "5 樂透金", color: "#7f1d1d" },
+        { name: "10 樂透金", color: "#2a0505" },
+        { name: "15 樂透金", color: "#991b1b" },
+        { name: "20 樂透金", color: "#450a0a" }
+      ];
+
+      // 初始化流程
+      async function init() {
+        drawWheel();
+        createParticles();
+        try {
+          await liff.init({ liffId: LIFF_ID });
+          if (!liff.isLoggedIn()) { liff.login(); return; }
+          const profile = await liff.getProfile();
+          userUID = profile.userId;
+
+          // 檢查 GAS 是否玩過
+          const res = await fetch(GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'check', userId: userUID })
+          });
+          const data = await res.json();
+          if (data.canPlay) {
+            document.getElementById('loading-overlay').style.display = 'none';
+          } else {
+            document.getElementById('loading-text').innerHTML = "❌ 您已參加過本活動<br><small style='font-size:14px; opacity:0.7'>每位會員限參加一次</small>";
+          }
+        } catch (e) {
+          document.getElementById('loading-overlay').style.display = 'none';
+        }
+      }
+
+      // 繪製輪盤
+      function drawWheel() {
+        const canvas = document.getElementById('wheel-canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = 800; canvas.height = 800;
+        const cx = 400, cy = 400, r = 380;
+        const step = (Math.PI * 2) / prizes.length;
+
+        prizes.forEach((p, i) => {
+          const angle = i * step;
+          ctx.beginPath();
+          ctx.fillStyle = p.color;
+          ctx.moveTo(cx, cy);
+          ctx.arc(cx, cy, r, angle, angle + step);
+          ctx.fill();
+          ctx.strokeStyle = "#f59e0b";
+          ctx.lineWidth = 4;
+          ctx.stroke();
+
+          ctx.save();
+          ctx.translate(cx, cy);
+          ctx.rotate(angle + step / 2);
+          ctx.fillStyle = "#fbbf24";
+          ctx.font = "bold 52px Noto Sans TC";
+          ctx.textAlign = "right";
+          ctx.fillText(p.name, r - 60, 20);
+          ctx.restore();
+        });
+      }
+
+      // 旋轉邏輯
+      function startSpin() {
+        if (isSpinning) return;
+        isSpinning = true;
+        document.getElementById('spin-btn').classList.add('disabled');
+        document.getElementById('status-msg').innerText = "🔮 好運計算中...";
+
+        const winIndex = Math.floor(Math.random() * prizes.length);
+        const totalRotation = 3600 + (360 - (winIndex * (360 / prizes.length)) - (180 / prizes.length));
+
+        gsap.to("#wheel-canvas", {
+          rotation: totalRotation,
+          duration: 5,
+          ease: "back.out(0.4)",
+          onComplete: () => {
+            saveResult(prizes[winIndex].name);
+          }
+        });
+      }
+
+      // 存檔與顯示
+      async function saveResult(prizeName) {
+        document.getElementById('status-msg').innerHTML = `🎊 恭喜獲得：<span class="text-yellow-400 font-bold text-2xl">${prizeName}</span>`;
+        try {
+          await fetch(GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'save', userId: userUID, prize: prizeName })
+          });
+        } catch (e) {
+          console.error("存檔失敗", e);
+        }
+      }
+
+      function createParticles() {
+        const container = document.getElementById('bg-particles');
+        for (let i = 0; i < 20; i++) {
+          const p = document.createElement('div');
+          p.className = 'particle';
+          const size = Math.random() * 5 + 2 + 'px';
+          p.style.width = p.style.height = size;
+          p.style.left = Math.random() * 100 + 'vw';
+          p.style.animationDuration = Math.random() * 10 + 5 + 's';
+          p.style.animationDelay = Math.random() * 5 + 's';
+          container.appendChild(p);
+        }
+      }
+
+      window.onload = init;
+    </script>
+  </body>
+</html>
